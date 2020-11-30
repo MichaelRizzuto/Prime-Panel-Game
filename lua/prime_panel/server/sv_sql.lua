@@ -5,6 +5,8 @@
 
 require "mysqloo"
 
+local receivedata
+
 local host = PRIME_PANEL_CONFIG.DB_Host
 local user = PRIME_PANEL_CONFIG.DB_User
 local pass = PRIME_PANEL_CONFIG.DB_Pass
@@ -22,3 +24,26 @@ function conn:onConnectionFailed(error)
 end
 
 conn:connect()
+
+--
+-- Player Initialization
+--
+
+hook.Add("PlayerInitialSpawn", "PlayerToPanelInit", function(ply)
+	ply:SetNWFloat("PanelPlaytime", 0)
+	timer.Simple(5, function()
+		local q = conn:prepare("SELECT * FROM `users` WHERE `sid` = '" .. ply:SteamID64() .. "'")
+		function q:onSuccess(data)
+			if not data[1] then
+				local i = conn:prepare("INSERT INTO `users` (`sid`, `ip`, `playtime`, `lastplayed`) VALUES ('" .. ply:SteamID64() .. "', '" .. ply:IPAddress() .. "', '0', '" .. os.date("%m/%d/%y") .. "')")
+				i:start()
+				ply:SetNWFloat("PanelPlaytime", 0)
+			else
+				for k, v in pairs(data) do
+					ply:SetNWFloat("PanelPlaytime", v.playtime)
+				end
+			end
+		end
+		q:start()
+	end)
+end)
