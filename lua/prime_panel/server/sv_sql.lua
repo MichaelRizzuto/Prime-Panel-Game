@@ -26,6 +26,39 @@ end
 conn:connect()
 
 --
+-- Server Initialization
+--
+
+hook.Add("Initialize", "ServerToPanelInit", function()
+	timer.Simple(1, function()
+		local q = conn:prepare("UPDATE `users` SET `activeserver` = 'none' WHERE `activeserver` = '" .. PRIME_PANEL_CONFIG.ID .. "'")
+		q:start()
+	end)
+end)
+
+--
+-- Timer Logic
+--
+
+function StartPanelTimer(ply, steamid)
+	timer.Create("PanelTimer" .. ply:SteamID64(), 60, 0, function()
+		if ply:IsPlayer() then
+			ply:SetNWFloat("PanelPlaytime", ply:GetNWFloat("PanelPlaytime")+1)
+			local q = conn:prepare("UPDATE `users` SET `playtime` = '" .. ply:GetNWFloat("PanelPlaytime") .. "' WHERE `sid` = '" .. ply:SteamID64() .. "'")
+			q:start()
+			local t = conn:prepare("UPDATE `users` SET `lastplayed` = '" .. os.time() .. "' WHERE `sid` = '" .. ply:SteamID64() .. "'")
+			t:start()
+		else
+			local i = conn:prepare("UPDATE `users` SET `activeserver` = 'none' WHERE `sid` = '" .. steamid .. "'")
+			i:start()
+			if timer.Exists("PanelTimer" .. steamid) then
+				timer.Remove("PanelTimer" .. steamid)
+			end
+		end
+	end)
+end
+
+--
 -- Player Initialization
 --
 
@@ -35,27 +68,21 @@ hook.Add("PlayerInitialSpawn", "PlayerToPanelInit", function(ply)
 		local q = conn:prepare("SELECT * FROM `users` WHERE `sid` = '" .. ply:SteamID64() .. "'")
 		function q:onSuccess(data)
 			if not data[1] then
-				local i = conn:prepare("INSERT INTO `users` (`sid`, `ip`, `playtime`, `lastplayed`, `activeserver`) VALUES ('" .. ply:SteamID64() .. "', '" .. ply:IPAddress() .. "', '0', '" .. os.date("%m/%d/%y") .. "', '" .. PRIME_PANEL_CONFIG.ID .. "')")
+				local i = conn:prepare("INSERT INTO `users` (`sid`, `ip`, `playtime`, `lastplayed`, `activeserver`) VALUES ('" .. ply:SteamID64() .. "', '" .. ply:IPAddress() .. "', '0', '" .. os.time() .. "', '" .. PRIME_PANEL_CONFIG.ID .. "')")
 				i:start()
 				ply:SetNWFloat("PanelPlaytime", 0)
+				StartPanelTimer(ply, ply:SteamID64())
 			else
-				local q = conn:prepare("UPDATE `users` SET `activeserver` = '" .. PRIME_PANEL_CONFIG.ID .. "' WHERE `sid` = '" .. ply:SteamID64() .. "'")
-				q:start()
+				local n = conn:prepare("UPDATE `users` SET `activeserver` = '" .. PRIME_PANEL_CONFIG.ID .. "' WHERE `sid` = '" .. ply:SteamID64() .. "'")
+				n:start()
+				local t = conn:prepare("UPDATE `users` SET `lastplayed` = '" .. os.time() .. "' WHERE `sid` = '" .. ply:SteamID64() .. "'")
+				t:start()
 				for k, v in pairs(data) do
 					ply:SetNWFloat("PanelPlaytime", v.playtime)
 				end
+				StartPanelTimer(ply, ply:SteamID64())
 			end
 		end
 		q:start()
 	end)
-end)
-
---
--- Player Disconnection
---
-
-hook.Add("PlayerDisconnected", "PlayerToPanelDis", function(ply)
-	local steamid = ply:SteamID64()
-	local q = conn:prepare("UPDATE `users` SET `activeserver` = 'none' WHERE `sid` = '" .. steamid .. "'")
-	q:start()
 end)
