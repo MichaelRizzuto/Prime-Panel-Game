@@ -7,7 +7,8 @@
 -- Information
 --
 
-PRIME_PANEL_CONFIG.URL = "";
+PRIME_PANEL_CONFIG.URL = ""; -- include subdmain/subdirectory
+PRIME_PANEL_CONFIG.SteamAPIKey = ""; -- https://steamcommunity.com/dev/apikey
 PRIME_PANEL_CONFIG.ID = "1"; -- Server ID (listed in panel)
 PRIME_PANEL_CONFIG.Version = "1.0.0";
 
